@@ -1,9 +1,5 @@
 service: household-account-book
 
-# You can pin your service to only deploy with a specific Serverless version
-# Check out our docs for more details
-# frameworkVersion: "=X.X.X"
-
 provider:
   name: aws
   runtime: nodejs6.10
@@ -17,12 +13,14 @@ provider:
      Resource: "arn:aws:dynamodb:*"
 
 functions:
+  # GoogleAssistantから入力を受け付けるAPI
   account:
     handler: handler.handler
     events:
       - http:
           path: account
           method: post
+  # 毎月1日の0時（UTC）に集計してくれるLambda
   asyncAggregate:
     handler: aggregate.handler
     events:
@@ -30,8 +28,7 @@ functions:
 
 resources:
   Resources:
-    # ref: http://docs.aws.amazon.com/ja_jp/AWSCloudFormation/latest/UserGuide/aws-resource-dynamodb-table.html#cfn-dynamodb-table-attributedef
-    TemplateDynamoTable:
+    AccountBookTable:
       Type: AWS::DynamoDB::Table
       Properties:
         TableName: household-account-books
@@ -51,14 +48,20 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
-# you can add CloudFormation resource templates here
-#resources:
-#  Resources:
-#    NewResource:
-#      Type: AWS::S3::Bucket
-#      Properties:
-#        BucketName: my-new-bucket
-#  Outputs:
-#     NewOutput:
-#       Description: "Description for the output"
-#       Value: "Some output value"
+    AccountSummaryTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: household-account-summaries
+        AttributeDefinitions:
+          - AttributeName: yearMonth
+            AttributeType: S # String:S Number:N Binary:B
+          - AttributeName: category
+            AttributeType: S
+        KeySchema:
+          - AttributeName: yearMonth
+            KeyType: HASH # HASH or RANGE
+          - AttributeName: category
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1

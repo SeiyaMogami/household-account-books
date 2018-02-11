@@ -20,6 +20,7 @@ exports.handler = (event, context, callback) => {
   const today = new Date();
   const firstDateOfLastMonth = Math.floor(new Date(today.getFullYear(), today.getMonth() - 1, 1, 0, 0, 0).getTime() / 1000);
   const lastDateOfLastMonth = Math.floor(new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0).getTime() / 1000) - 1;
+  const lastMonth = new Date(firstDateOfLastMonth * 1000);
 
   let params = [];
   config.categories.forEach(category => {
@@ -56,10 +57,35 @@ exports.handler = (event, context, callback) => {
         .filter(v => v); // undefined削除
     })
     .then(results => {
+      // summaryテーブルに追加
+      let requests = [];
+      results.forEach(result => {
+        requests.push({
+          PutRequest: {
+            Item: {
+              yearMonth: `${lastMonth.getFullYear()}/${lastMonth.getMonth() + 1}`,
+              category: result.category,
+              price: result.price
+            }
+          }
+        });
+      });
+      if (requests.length > 0) {
+        let params = {
+          RequestItems: {}
+        };
+        params.RequestItems[config.summaryTableName] = requests;
+        dynamo.batchWrite(params, (err) => {
+          if (err) {
+            sendMessage(`集計データの記録に失敗してしもたわ。\nFOR SEIYA: ${err}`);
+          }
+        });
+      }
+      return results;
+    })
+    .then(results => {
       // メッセージの整形
-      today.setMonth(today.getMonth() - 1);
-      let lastMonth = today.getMonth() + 1;
-      let message = `${lastMonth}月分の支出は\n`;
+      let message = `${lastMonth.getMonth()}月分の支出は\n`;
       results.forEach(result => {
         message += `・${result.category}: ${result.price}円\n`
       })
