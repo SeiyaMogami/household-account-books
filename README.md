@@ -12,3 +12,7 @@ module.exports = {
   "lineUrl": "My LINEBot URL"
 }
 ```
+
+## 変更
+- 2018/04/07
+  - 稼働停止
